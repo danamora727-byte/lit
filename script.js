@@ -1,4 +1,4 @@
-const I={
+﻿const I={
 logo:'<path d="M12 6c-2-2-5-2.5-9-2v14c4-.5 7 0 9 2 2-2 5-2.5 9-2V4c-4-.5-7 0-9 2z"/><path d="M12 6v14"/>',
 home:'<path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',
 borrowed:'<path d="M4 4h12a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/><path d="M8 8h6M8 12h6"/>',
@@ -10,7 +10,7 @@ plus:'<path d="M12 5v14M5 12h14"/>'};
 const ic=n=>`<svg viewBox="0 0 24 24">${I[n]}</svg>`;
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const iso=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toLocaleDateString('en-CA')};
+const iso=n=>{const d=new Date();d.setDate(d.getDate()+n);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')};
 const uid=()=>Math.random().toString(36).slice(2,9);
 const KEY='library-system-v1';
 
@@ -41,7 +41,7 @@ function vHome(){
   const stats=[['Book titles',S.books.length],['Active loans',S.loans.filter(isActive).length],['Overdue',od.length],['Borrowers',S.people.length]];
   const rows=od.map(l=>{const b=book(l.bid),d=Math.round((new Date(iso(0))-new Date(l.due))/864e5);
     return `<tr><td>${esc(person(l.pid).name)}</td><td>${esc(b.title)}</td><td>${l.due} <span class="badge bad">${d} day${d>1?'s':''} late</span></td><td class="act"><button class="btn sm" data-a="ret" data-id="${l.id}">${ic('check')}Mark returned</button></td></tr>`}).join('');
-  return `<h1>Dashboard</h1><p class="sub">Here’s what’s happening in the library today.</p>
+  return `<h1>Dashboard</h1><p class="sub">A quick look at what is happening in your library today.</p>
   <div class="stats">${stats.map(([k,v])=>`<div class="card stat"><b>${v}</b><span>${k}</span></div>`).join('')}</div>
   <h2>Overdue loans</h2>
   <div class="tw"><table><thead><tr><th>Borrower</th><th>Book Title</th><th>Due Date</th><th></th></tr></thead><tbody>${rows||'<tr><td colspan="4" class="empty">No overdue loans. Everything is on schedule.</td></tr>'}</tbody></table></div>`;
@@ -67,7 +67,7 @@ function vAdd(){
     <label for="s">Student/ID Number</label><input id="s" required placeholder="Enter student or ID number">
     <label for="c">Course / Department <small>(Optional)</small></label><input id="c" placeholder="Enter course or department">
     <label for="bt">Book Title</label><input id="bt" list="bk" required placeholder="Enter the book being borrowed"><datalist id="bk">${S.books.map(b=>`<option value="${esc(b.title)}">`).join('')}</datalist>
-    <label for="ba">Author</label><input id="ba" required placeholder="Enter the author’s name">
+    <label for="ba">Author</label><input id="ba" required placeholder="Enter the author name">
     <button class="btn">Add Borrower</button>
   </form>
   <h2>Registered borrowers</h2>
@@ -111,7 +111,7 @@ function openLoan(){
   if(!bs.length){toast('No copies are available. Add books in the catalog.');return}
   $('#dlg').innerHTML=`<form id="lf"><h2>New Loan</h2>
   <label for="lp">Borrower</label><select id="lp">${S.people.map(p=>`<option value="${p.id}">${esc(p.name)} (${esc(p.sid)})</option>`).join('')}</select>
-  <label for="lb">Book</label><select id="lb">${bs.map(b=>`<option value="${b.id}">${esc(b.title)} – ${avail(b)} left</option>`).join('')}</select>
+  <label for="lb">Book</label><select id="lb">${bs.map(b=>`<option value="${b.id}">${esc(b.title)} - ${avail(b)} left</option>`).join('')}</select>
   <div class="grid2"><div><label for="ld">Date Borrowed</label><input id="ld" type="date" value="${iso(0)}" required></div><div><label for="lu">Due Date</label><input id="lu" type="date" value="${iso(14)}" required></div></div>
   <div class="row"><button type="button" class="btn ghost" data-a="close">Cancel</button><button class="btn">Save loan</button></div></form>`;
   $('#dlg').showModal();
@@ -124,10 +124,10 @@ document.addEventListener('click',e=>{
   const a=el.dataset.a,id=el.dataset.id;
   if(a==='new')return openLoan();
   if(a==='close')return $('#dlg').close();
-  if(a==='ret'){S.loans.find(l=>l.id===id).returned=iso(0);save();render();toast('Book returned')}
-  if(a==='dl'){S.loans=S.loans.filter(l=>l.id!==id);save();render();toast('Loan deleted')}
-  if(a==='dp'){if(S.loans.some(l=>l.pid===id&&isActive(l)))return toast('This borrower still has books out.');S.people=S.people.filter(p=>p.id!==id);save();render();toast('Borrower deleted')}
-  if(a==='db'){if(S.loans.some(l=>l.bid===id&&isActive(l)))return toast('Copies of this book are still lent out.');S.books=S.books.filter(b=>b.id!==id);save();render();toast('Book deleted')}
+  if(a==='ret'){const loan=S.loans.find(l=>l.id===id);if(!loan||loan.returned)return;loan.returned=iso(0);save();render();toast('Book returned')}
+  if(a==='dl'){if(!confirm('Delete this loan record? This cannot be undone.'))return;S.loans=S.loans.filter(l=>l.id!==id);save();render();toast('Loan deleted')}
+  if(a==='dp'){if(S.loans.some(l=>l.pid===id&&isActive(l)))return toast('This borrower still has books out.');if(!confirm('Delete this borrower? Their loan history will remain.'))return;S.people=S.people.filter(p=>p.id!==id);save();render();toast('Borrower deleted')}
+  if(a==='db'){if(S.loans.some(l=>l.bid===id&&isActive(l)))return toast('Copies of this book are still lent out.');if(!confirm('Delete this book from the catalog? Loan history will remain.'))return;S.books=S.books.filter(b=>b.id!==id);save();render();toast('Book deleted')}
 });
 document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('nav a')){e.preventDefault();go(e.target.dataset.r)}});
 document.addEventListener('input',e=>{
@@ -149,7 +149,7 @@ document.addEventListener('submit',e=>{
     if(!p){p={id:uid(),name,sid,course};S.people.push(p)}
     if(!b){b={id:uid(),title,author,copies:1};S.books.push(b)}
     S.loans.push({id:uid(),pid:p.id,bid:b.id,borrowed:iso(0),due:iso(14),returned:''});
-    save();e.target.reset();peopleRows();$('#n').focus();toast(name+' is now borrowing “'+b.title+'”');
+    save();e.target.reset();peopleRows();$('#n').focus();toast(name+' is now borrowing '+b.title);
   }
   if(id==='kf'){
     const title=v('t'),author=v('a'),copies=Math.min(99,Math.max(1,parseInt(v('k'))||1));
@@ -158,7 +158,7 @@ document.addEventListener('submit',e=>{
   }
   if(id==='lf'){
     const borrowed=$('#ld').value,due=$('#lu').value;
-    if(due<borrowed)return toast('The due date can’t be before the borrow date.');
+    if(due<borrowed)return toast('The due date cannot be before the borrow date.');
     S.loans.push({id:uid(),pid:$('#lp').value,bid:$('#lb').value,borrowed,due,returned:''});save();$('#dlg').close();render();toast('Loan saved');
   }
 });
